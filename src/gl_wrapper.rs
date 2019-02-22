@@ -3,59 +3,22 @@ pub struct GL{}
 
 #[cfg(not(test))]
 impl GL{
-    #[inline(always)] pub unsafe fn create_program() -> GLuint{
-        gl::CreateProgram()
-    }
-    #[inline(always)] pub unsafe fn attach_shader(program: GLuint, shader_name: GLuint){
-        gl::AttachShader(program, shader_name)
-    }
-    #[inline(always)] pub unsafe fn detach_shader(program: GLuint, shader_name: GLuint){
-        gl::DetachShader(program, shader_name)
-    }
-    #[inline(always)] pub unsafe fn link_program(program: GLuint){
-        gl::LinkProgram(program)
-    }
-    #[inline(always)] pub unsafe fn validate_program(program: GLuint){
-        gl::ValidateProgram(program);
-    }
-    #[inline(always)] pub unsafe fn use_program(program: GLuint){
-        gl::UseProgram(program);
-    }
-    #[inline(always)] pub unsafe fn get_programiv(program: GLuint, param: GLuint, result: &mut GLint){
-        gl::GetProgramiv(program, param, result);
-    }
-    #[inline(always)] pub unsafe fn get_program_info_log(program: GLuint, max_length: GLint, length: *mut GLsizei, buf: *mut GLchar){
-        gl::GetProgramInfoLog(
-            program,
-            max_length,
-            length,
-            buf,
-        );
-    }
-    #[inline(always)] pub unsafe fn delete_program(program: GLuint){
-        gl::DeleteProgram(program)
-    }
-    #[inline(always)] pub unsafe fn create_shader(shader_type: u32) -> GLuint{
-        gl::CreateShader(shader_type)
-    }
-    #[inline(always)] pub unsafe fn shader_source(shader: GLuint, count: GLsizei, string: *const *const GLchar, length: *const GLint){
-        gl::ShaderSource(shader, count, string, length)
-    }
-    #[inline(always)] pub unsafe fn compile_shader(shader: GLuint){
-        gl::CompileShader(shader)
-    }
-    #[inline(always)] pub unsafe fn get_shaderiv(shader: GLuint, param: GLuint, result: &mut GLint){
-        gl::GetShaderiv(shader, param, result);
-    }
-    #[inline(always)] pub unsafe fn get_shader_info_log(shader: GLuint, max_length: GLint, length: *mut GLsizei, buf: *mut GLchar){
-        gl::GetShaderInfoLog(shader, max_length, length, buf);
-    }
-    #[inline(always)] pub unsafe fn get_shader_source(shader: GLuint, max_length: GLint, length: *mut GLsizei, buf: *mut GLchar){
-        gl::GetShaderSource(shader, max_length, length, buf);
-    }
-    #[inline(always)] pub unsafe fn delete_shader(name: GLuint){
-        gl::DeleteShader(name)
-    }
+    #[inline(always)] pub unsafe fn create_program() -> GLuint{ gl::CreateProgram() }
+    #[inline(always)] pub unsafe fn attach_shader(program: GLuint, shader_name: GLuint){ gl::AttachShader(program, shader_name) }
+    #[inline(always)] pub unsafe fn detach_shader(program: GLuint, shader_name: GLuint){ gl::DetachShader(program, shader_name) }
+    #[inline(always)] pub unsafe fn link_program(program: GLuint){ gl::LinkProgram(program) }
+    #[inline(always)] pub unsafe fn validate_program(program: GLuint){ gl::ValidateProgram(program); }
+    #[inline(always)] pub unsafe fn use_program(program: GLuint){ gl::UseProgram(program); }
+    #[inline(always)] pub unsafe fn get_programiv(program: GLuint, param: GLuint, result: &mut GLint){ gl::GetProgramiv(program, param, result); }
+    #[inline(always)] pub unsafe fn get_program_info_log(program: GLuint, max_length: GLint, length: *mut GLsizei, buf: *mut GLchar){ gl::GetProgramInfoLog(program, max_length, length, buf, ); }
+    #[inline(always)] pub unsafe fn delete_program(program: GLuint){ gl::DeleteProgram(program) }
+    #[inline(always)] pub unsafe fn create_shader(shader_type: u32) -> GLuint{ gl::CreateShader(shader_type) }
+    #[inline(always)] pub unsafe fn shader_source(shader: GLuint, count: GLsizei, string: *const *const GLchar, length: *const GLint){ gl::ShaderSource(shader, count, string, length) }
+    #[inline(always)] pub unsafe fn compile_shader(shader: GLuint){ gl::CompileShader(shader) }
+    #[inline(always)] pub unsafe fn get_shaderiv(shader: GLuint, param: GLuint, result: &mut GLint){ gl::GetShaderiv(shader, param, result); }
+    #[inline(always)] pub unsafe fn get_shader_info_log(shader: GLuint, max_length: GLint, length: *mut GLsizei, buf: *mut GLchar){ gl::GetShaderInfoLog(shader, max_length, length, buf); }
+    #[inline(always)] pub unsafe fn get_shader_source(shader: GLuint, max_length: GLint, length: *mut GLsizei, buf: *mut GLchar){ gl::GetShaderSource(shader, max_length, length, buf); }
+    #[inline(always)] pub unsafe fn delete_shader(name: GLuint){ gl::DeleteShader(name) }
 }
 
 #[cfg(test)] use std::sync::atomic::AtomicIsize;
