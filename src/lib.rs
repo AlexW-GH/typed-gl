@@ -16,7 +16,7 @@ pub mod prelude{
 
 pub mod tgl_buffer {
     pub use super::objects::buffer::{BufferTarget, BufferUsage, GLMutableBuffer, GLBuffer};
-    pub use super::objects::buffer::func::{bind, unbind, buffer_data};
+    pub use super::objects::buffer::func::{unbind, buffer_data};
 }
 
 pub mod gl_framebuffer{
@@ -24,7 +24,7 @@ pub mod gl_framebuffer{
 }
 
 pub mod tgl_program{
-
+    pub use super::objects::program::{GLProgram, GetProgramIvParam, GetProgramIvResult};
 }
 
 pub mod tgl_pipeline {
@@ -44,7 +44,7 @@ pub mod tgl_sampler {
 }
 
 pub mod tgl_shader {
-
+    pub use super::objects::shader::{GLShader, GetShaderIvParam, GetShaderIvResult, ShaderType};
 }
 
 pub mod tgl_texture {
@@ -57,5 +57,5 @@ pub mod tgl_transform {
 
 pub mod tgl_vertexarray {
     pub use super::objects::vertex_array::{GLVertexArray};
-    pub use super::objects::vertex_array::func::{bind, unbind};
+    pub use super::objects::vertex_array::func::{unbind};
 }

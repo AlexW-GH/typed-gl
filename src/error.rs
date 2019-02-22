@@ -10,10 +10,18 @@ pub struct GLError {
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Fail)]
 pub enum GLErrorKind {
+    #[fail(display = "Program Creation Failed")]
+    ProgramCreation,
+    #[fail(display = "Shader Creation Failed")]
+    ShaderCreation,
     #[fail(display = "Buffer Creation Failed")]
     BufferCreation,
     #[fail(display = "VertexArray Creation Failed")]
     VertexArrayCreation,
+    #[fail(display = "Tried to reference a invalid or unknown shader")]
+    UnknownShader,
+    #[fail(display = "Internal null found in Shader source")]
+    ShaderSourceInternalNull,
     #[fail(display = "Too Many Buffers have been requested")]
     TooManyBuffers,
 }

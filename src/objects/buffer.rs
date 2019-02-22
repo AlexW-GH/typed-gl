@@ -7,11 +7,6 @@ use std::os::raw;
 
 pub mod func{
     use super::*;
-    pub fn bind(target: BufferTarget, buffer:  &impl GLBuffer) {
-        unsafe {
-            gl::BindBuffer(target.value(), buffer.name());
-        }
-    }
 
     pub fn unbind(target: BufferTarget) {
         unsafe {
@@ -29,8 +24,6 @@ pub mod func{
         );
     }
 }
-
-
 
 #[derive(Clone, Copy, Debug)]
 pub enum BufferTarget{
@@ -89,10 +82,10 @@ impl BufferUsage{
 }
 
 pub trait GLBuffer{
-    fn name(&self) -> u32;
+    fn bind(&self, target: BufferTarget);
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct GLMutableBuffer<T> {
     name: GLuint,
     phantom_data: PhantomData<T>,
@@ -107,8 +100,10 @@ impl <T> GLMutableBuffer<T>{
 }
 
 impl <T> GLBuffer for GLMutableBuffer<T>{
-    fn name(&self) -> u32 {
-        self.name
+    fn bind(&self, target: BufferTarget) {
+        unsafe {
+            gl::BindBuffer(target.value(), self.name);
+        }
     }
 }
 
