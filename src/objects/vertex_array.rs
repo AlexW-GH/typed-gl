@@ -18,7 +18,7 @@ impl GLVertexArray{
     pub fn new() -> Result<Self, GLError> {
         let mut name: GLuint = 0;
         unsafe {
-            gl::GenBuffers(1, &mut name);
+            gl::GenVertexArrays(1, &mut name);
         }
         if name != 0 {
             Ok(GLVertexArray{name})
