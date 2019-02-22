@@ -153,6 +153,10 @@ impl GLProgram{
         }
         buf
     }
+
+    pub fn name(&self) -> u32 {
+        self.name
+    }
 }
 
 impl Drop for GLProgram {
