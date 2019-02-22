@@ -1,5 +1,6 @@
 mod error;
 mod objects;
+mod gl_wrapper;
 
 pub mod prelude{
     pub use super::tgl_buffer;

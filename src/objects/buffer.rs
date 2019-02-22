@@ -25,7 +25,7 @@ pub mod func{
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BufferTarget{
     UnboundBuffer,
     ArrayBuffer,
@@ -67,7 +67,7 @@ impl BufferTarget{
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BufferUsage{
     StaticDraw
 }
