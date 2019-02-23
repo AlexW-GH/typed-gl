@@ -1,9 +1,9 @@
-use crate::error::GLErrorKind;
-use gl::types::*;
 use crate::error::GLError;
-use crate::objects::shader::GLShader;
+use crate::error::GLErrorKind;
 use crate::gl_wrapper::GL;
+use crate::objects::shader::GLShader;
 use crate::objects::shader::ShaderType;
+use gl::types::*;
 use std::ptr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -15,11 +15,11 @@ pub enum GetProgramIvParam {
     ActiveAttributes,
     ActiveAttributeMaxLength,
     ActiveUniforms,
-    ActiveUniformMaxLength
+    ActiveUniformMaxLength,
 }
 
 impl GetProgramIvParam {
-    pub fn value(&self) -> u32 {
+    pub fn value(self) -> u32 {
         use self::GetProgramIvParam::*;
         match self {
             DeleteStatus => gl::DELETE_STATUS,
@@ -27,7 +27,7 @@ impl GetProgramIvParam {
             ValidateStatus => gl::VALIDATE_STATUS,
             AttachedShaders => gl::ATTACHED_SHADERS,
             ActiveAttributes => gl::ACTIVE_ATTRIBUTES,
-            ActiveAttributeMaxLength => gl:: ACTIVE_ATTRIBUTE_MAX_LENGTH,
+            ActiveAttributeMaxLength => gl::ACTIVE_ATTRIBUTE_MAX_LENGTH,
             ActiveUniforms => gl::ACTIVE_UNIFORMS,
             ActiveUniformMaxLength => gl::ACTIVE_UNIFORM_MAX_LENGTH,
         }
@@ -41,18 +41,18 @@ pub enum GetProgramIvResult {
 }
 
 #[derive(Debug)]
-pub struct GLProgram{
+pub struct GLProgram {
     name: GLuint,
-    shaders: Vec<ShaderNameTypePair>
+    shaders: Vec<ShaderNameTypePair>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct ShaderNameTypePair{
+struct ShaderNameTypePair {
     shader_name: GLuint,
-    shader_type: ShaderType
+    shader_type: ShaderType,
 }
 
-impl GLProgram{
+impl GLProgram {
     pub fn new() -> Result<Self, GLError> {
         let name;
         unsafe {
@@ -61,65 +61,74 @@ impl GLProgram{
         if name == 0 {
             return Err(GLErrorKind::ProgramCreation)?;
         }
-        Ok(GLProgram{name, shaders: Vec::new()})
+        Ok(GLProgram {
+            name,
+            shaders: Vec::new(),
+        })
     }
 
-    pub fn attach_shader(&mut self, shader: &GLShader) -> Result<(), GLError>{
-        let name_position = self.shaders.iter()
+    pub fn attach_shader(&mut self, shader: &GLShader) -> Result<(), GLError> {
+        let name_position = self
+            .shaders
+            .iter()
             .map(|pair| pair.shader_name)
             .position(|name| name == shader.name());
-        let type_position = self.shaders.iter()
+        let type_position = self
+            .shaders
+            .iter()
             .map(|pair| pair.shader_type)
             .position(|shader_type| shader_type == shader.shader_type());
 
-        if name_position.is_some(){
+        if name_position.is_some() {
             Err(GLErrorKind::ShaderAlreadyPresent)?
-        } else if type_position.is_some(){
+        } else if type_position.is_some() {
             Err(GLErrorKind::TypeAlreadyPresent)?
         } else {
             unsafe {
                 GL::attach_shader(self.name, shader.name());
             }
-            self.shaders.push(ShaderNameTypePair { shader_name: shader.name(), shader_type: shader.shader_type() });
+            self.shaders.push(ShaderNameTypePair {
+                shader_name: shader.name(),
+                shader_type: shader.shader_type(),
+            });
         }
         Ok(())
     }
 
-    pub fn detach_shader(&mut self, shader: &GLShader) -> Result<(), GLError>{
-        match self.shaders.iter().position(|value| value.shader_name == shader.name()) {
+    pub fn detach_shader(&mut self, shader: &GLShader) -> Result<(), GLError> {
+        match self
+            .shaders
+            .iter()
+            .position(|value| value.shader_name == shader.name())
+        {
             Some(index) => {
-                unsafe{
+                unsafe {
                     GL::detach_shader(self.name, shader.name());
                 }
                 self.shaders.remove(index);
             }
-            None => Err(GLErrorKind::ShaderNotPresent)?
+            None => Err(GLErrorKind::ShaderNotPresent)?,
         }
         Ok(())
     }
 
+    pub fn link_program(&self) {
+        unsafe { GL::link_program(self.name) }
+    }
 
-    pub fn link_program(&self){
+    pub fn validate_program(&self) {
+        unsafe { GL::validate_program(self.name) }
+    }
+
+    pub fn use_program(&self) {
         unsafe {
-            GL::link_program(self.name)
-        }
-    }
-
-    pub fn validate_program(&self){
-        unsafe{
-            GL::validate_program(self.name)
-        }
-    }
-
-    pub fn use_program(&self){
-        unsafe{
             GL::use_program(self.name);
         }
     }
 
-    pub fn get_program_iv(&self, param: GetProgramIvParam) -> GetProgramIvResult{
+    pub fn get_program_iv(&self, param: GetProgramIvParam) -> GetProgramIvResult {
         use self::GetProgramIvParam::*;
-        let mut result = gl::FALSE as GLint;
+        let mut result = i32::from(gl::FALSE);
         unsafe {
             GL::get_programiv(self.name, param.value(), &mut result);
         }
@@ -137,12 +146,11 @@ impl GLProgram{
 
     pub fn get_info_log(&self) -> Vec<u8> {
         let mut len = 0;
-        unsafe{
+        unsafe {
             GL::get_programiv(self.name, gl::INFO_LOG_LENGTH, &mut len);
-
         }
         let mut buf = Vec::with_capacity(len as usize);
-        unsafe{
+        unsafe {
             buf.set_len((len as usize) - 1);
             GL::get_program_info_log(
                 self.name,
@@ -165,17 +173,14 @@ impl Drop for GLProgram {
     }
 }
 
-
-
-
 #[cfg(test)]
-mod tests{
+mod tests {
     use speculate::speculate;
 
+    use crate::error::GLErrorKind;
     use crate::objects::program::{GLProgram, GetProgramIvParam, GetProgramIvResult};
     use crate::objects::shader::GLShader;
     use crate::objects::shader::ShaderType;
-    use crate::error::GLErrorKind;
 
     speculate! {
         describe "shaders" {

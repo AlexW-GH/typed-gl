@@ -1,7 +1,7 @@
-use failure::Fail;
-use failure::Context;
-use std::fmt;
 use failure::Backtrace;
+use failure::Context;
+use failure::Fail;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct GLError {
@@ -65,7 +65,9 @@ impl GLError {
 
 impl From<GLErrorKind> for GLError {
     fn from(kind: GLErrorKind) -> GLError {
-        GLError { inner: Context::new(kind) }
+        GLError {
+            inner: Context::new(kind),
+        }
     }
 }
 

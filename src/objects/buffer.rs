@@ -1,12 +1,12 @@
+use super::super::error::{GLError, GLErrorKind};
 use gl;
 use gl::types::*;
-use super::super::error::{GLError, GLErrorKind};
 use std::marker::PhantomData;
 use std::mem;
 use std::os::raw;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum BufferTarget{
+pub enum BufferTarget {
     UnboundBuffer,
     ArrayBuffer,
     AtomicCounterBuffer,
@@ -24,10 +24,10 @@ pub enum BufferTarget{
     UniformBuffer,
 }
 
-impl BufferTarget{
-    pub fn value(&self) -> u32{
+impl BufferTarget {
+    pub fn value(self) -> u32 {
         use self::BufferTarget::*;
-        match self{
+        match self {
             UnboundBuffer => 0,
             ArrayBuffer => gl::ARRAY_BUFFER,
             AtomicCounterBuffer => gl::ATOMIC_COUNTER_BUFFER,
@@ -48,20 +48,20 @@ impl BufferTarget{
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum BufferUsage{
-    StaticDraw
+pub enum BufferUsage {
+    StaticDraw,
 }
 
-impl BufferUsage{
-    pub fn value(&self)  -> u32{
+impl BufferUsage {
+    pub fn value(self) -> u32 {
         use self::BufferUsage::*;
-        match self{
-            StaticDraw => gl::STATIC_DRAW
+        match self {
+            StaticDraw => gl::STATIC_DRAW,
         }
     }
 }
 
-pub trait GLBuffer{
+pub trait GLBuffer {
     fn bind(&self, target: BufferTarget);
     fn unbind(&self, target: BufferTarget);
 }
@@ -72,14 +72,17 @@ pub struct GLMutableBuffer<T> {
     phantom_data: PhantomData<T>,
 }
 
-impl <T> GLMutableBuffer<T>{
+impl<T> GLMutableBuffer<T> {
     pub fn new() -> Result<GLMutableBuffer<T>, GLError> {
         let name = create_buffer()?;
 
-        Ok(GLMutableBuffer{name, phantom_data: PhantomData})
+        Ok(GLMutableBuffer {
+            name,
+            phantom_data: PhantomData,
+        })
     }
 
-    pub unsafe fn buffer_data(&self, target: BufferTarget, usage: BufferUsage, data: &[T]){
+    pub unsafe fn buffer_data(&self, target: BufferTarget, usage: BufferUsage, data: &[T]) {
         let data_ptr = &data[0] as *const _ as *const raw::c_void;
         gl::BufferData(
             target.value(),
@@ -90,7 +93,7 @@ impl <T> GLMutableBuffer<T>{
     }
 }
 
-impl <T> GLBuffer for GLMutableBuffer<T>{
+impl<T> GLBuffer for GLMutableBuffer<T> {
     fn bind(&self, target: BufferTarget) {
         unsafe {
             gl::BindBuffer(target.value(), self.name);
@@ -104,16 +107,22 @@ impl <T> GLBuffer for GLMutableBuffer<T>{
     }
 }
 
-impl <T> Drop for GLMutableBuffer<T> {
+impl<T> Drop for GLMutableBuffer<T> {
     fn drop(&mut self) {
-        unsafe { gl::DeleteBuffers(1, &self.name); }
+        unsafe {
+            gl::DeleteBuffers(1, &self.name);
+        }
     }
 }
 
-fn create_buffer() -> Result<GLuint, GLError>{
+fn create_buffer() -> Result<GLuint, GLError> {
     let mut name: GLuint = 0;
     unsafe {
         gl::GenBuffers(1, &mut name);
     }
-    if name != 0 { Ok(name) } else { Err(GLErrorKind::BufferCreation)? }
+    if name != 0 {
+        Ok(name)
+    } else {
+        Err(GLErrorKind::BufferCreation)?
+    }
 }

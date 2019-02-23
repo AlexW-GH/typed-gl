@@ -1,19 +1,19 @@
+use crate::error::GLError;
+use crate::error::GLErrorKind;
+use crate::gl_wrapper::GL;
+use crate::objects::shader::ShaderType::ComputeShader;
+use crate::objects::shader::ShaderType::FragmentShader;
+use crate::objects::shader::ShaderType::GeometryShader;
+use crate::objects::shader::ShaderType::TessControlShader;
+use crate::objects::shader::ShaderType::TessEvaluationShader;
+use crate::objects::shader::ShaderType::VertexShader;
+use failure::ResultExt;
 use gl::types::*;
 use std::ffi::CString;
 use std::ptr;
-use failure::ResultExt;
-use crate::gl_wrapper::GL;
-use crate::error::GLError;
-use crate::error::GLErrorKind;
-use crate::objects::shader::ShaderType::VertexShader;
-use crate::objects::shader::ShaderType::TessControlShader;
-use crate::objects::shader::ShaderType::TessEvaluationShader;
-use crate::objects::shader::ShaderType::GeometryShader;
-use crate::objects::shader::ShaderType::FragmentShader;
-use crate::objects::shader::ShaderType::ComputeShader;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum ShaderType{
+pub enum ShaderType {
     VertexShader,
     TessControlShader,
     TessEvaluationShader,
@@ -22,10 +22,10 @@ pub enum ShaderType{
     ComputeShader,
 }
 
-impl ShaderType{
-    pub fn value(&self) -> u32{
+impl ShaderType {
+    pub fn value(self) -> u32 {
         use self::ShaderType::*;
-        match self{
+        match self {
             VertexShader => gl::VERTEX_SHADER,
             TessControlShader => gl::TESS_CONTROL_SHADER,
             TessEvaluationShader => gl::TESS_EVALUATION_SHADER,
@@ -43,7 +43,7 @@ impl ShaderType{
             gl::GEOMETRY_SHADER => Ok(GeometryShader),
             gl::FRAGMENT_SHADER => Ok(FragmentShader),
             gl::COMPUTE_SHADER => Ok(ComputeShader),
-            _ => Err(GLErrorKind::UnknownShader)?
+            _ => Err(GLErrorKind::UnknownShader)?,
         }
     }
 }
@@ -56,12 +56,12 @@ pub enum GetShaderIvParam {
 }
 
 impl GetShaderIvParam {
-    pub fn value(&self) -> u32{
+    pub fn value(self) -> u32 {
         use self::GetShaderIvParam::*;
-        match self{
+        match self {
             ShaderType => gl::SHADER_TYPE,
             DeleteStatus => gl::DELETE_STATUS,
-            CompileStatus => gl::COMPILE_STATUS
+            CompileStatus => gl::COMPILE_STATUS,
         }
     }
 }
@@ -74,12 +74,12 @@ pub enum GetShaderIvResult {
 }
 
 #[derive(Debug)]
-pub struct GLShader{
+pub struct GLShader {
     name: GLuint,
     shader_type: ShaderType,
 }
 
-impl GLShader{
+impl GLShader {
     pub fn new(shader_type: ShaderType) -> Result<Self, GLError> {
         let name;
         unsafe {
@@ -88,7 +88,7 @@ impl GLShader{
         if name == 0 {
             return Err(GLErrorKind::ShaderCreation)?;
         }
-        Ok(GLShader{name, shader_type})
+        Ok(GLShader { name, shader_type })
     }
 
     pub fn name(&self) -> u32 {
@@ -99,42 +99,46 @@ impl GLShader{
         self.shader_type
     }
 
-    pub fn shader_source(&self, shader_src: &[u8]) -> Result<(), GLError>{
-        let c_str = CString::new(shader_src)
-            .context(GLErrorKind::ShaderSourceInternalNull)?;
+    pub fn shader_source(&self, shader_src: &[u8]) -> Result<(), GLError> {
+        let c_str = CString::new(shader_src).context(GLErrorKind::ShaderSourceInternalNull)?;
         let length = vec![shader_src.len() as GLint];
-        unsafe{
+        unsafe {
             GL::shader_source(self.name, 1, &c_str.as_ptr(), length.as_ptr());
         }
         Ok(())
     }
 
-    pub fn compile_shader(&self){
-        unsafe{
+    pub fn compile_shader(&self) {
+        unsafe {
             GL::compile_shader(self.name);
         }
     }
 
-    pub fn get_shader_iv(&self, param: GetShaderIvParam) -> Result<GetShaderIvResult, GLError>{
-        let mut result = gl::FALSE as GLint;
+    pub fn get_shader_iv(&self, param: GetShaderIvParam) -> Result<GetShaderIvResult, GLError> {
+        let mut result = i32::from(gl::FALSE);
         unsafe {
             GL::get_shaderiv(self.name, param.value(), &mut result);
         }
         match param {
-            GetShaderIvParam::ShaderType => Ok(GetShaderIvResult::ShaderResult(ShaderType::from(result)?)),
-            GetShaderIvParam::DeleteStatus => Ok(GetShaderIvResult::BooleanResult(result == gl::TRUE as GLint)),
-            GetShaderIvParam::CompileStatus => Ok(GetShaderIvResult::BooleanResult(result == gl::TRUE as GLint)),
+            GetShaderIvParam::ShaderType => {
+                Ok(GetShaderIvResult::ShaderResult(ShaderType::from(result)?))
+            }
+            GetShaderIvParam::DeleteStatus => Ok(GetShaderIvResult::BooleanResult(
+                result == i32::from(gl::TRUE),
+            )),
+            GetShaderIvParam::CompileStatus => Ok(GetShaderIvResult::BooleanResult(
+                result == i32::from(gl::TRUE),
+            )),
         }
     }
 
     pub fn get_info_log(&self) -> Vec<u8> {
         let mut len = 0;
-        unsafe{
+        unsafe {
             GL::get_shaderiv(self.name, gl::INFO_LOG_LENGTH, &mut len);
-
         }
         let mut buf = Vec::with_capacity(len as usize);
-        unsafe{
+        unsafe {
             buf.set_len((len as usize) - 1);
             GL::get_shader_info_log(
                 self.name,
@@ -148,12 +152,11 @@ impl GLShader{
 
     pub fn get_shader_source(&self) -> Vec<u8> {
         let mut len = 0;
-        unsafe{
+        unsafe {
             GL::get_shaderiv(self.name, gl::SHADER_SOURCE_LENGTH, &mut len);
-
         }
         let mut buf = Vec::with_capacity(len as usize);
-        unsafe{
+        unsafe {
             buf.set_len((len as usize) - 1);
             GL::get_shader_source(
                 self.name,
@@ -176,8 +179,8 @@ impl Drop for GLShader {
 mod tests {
     use speculate::speculate;
 
-    use crate::objects::shader::{GLShader, ShaderType, GetShaderIvParam, GetShaderIvResult};
     use crate::error::GLErrorKind;
+    use crate::objects::shader::{GLShader, GetShaderIvParam, GetShaderIvResult, ShaderType};
 
     speculate! {
         before {
