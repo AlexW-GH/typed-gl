@@ -19,7 +19,6 @@ pub mod prelude{
 
 pub mod tgl_buffer {
     pub use super::objects::buffer::{BufferTarget, BufferUsage, GLMutableBuffer, GLBuffer};
-    pub use super::objects::buffer::func::{unbind, buffer_data};
 }
 
 pub mod gl_framebuffer{
@@ -60,5 +59,4 @@ pub mod tgl_transform {
 
 pub mod tgl_vertexarray {
     pub use super::objects::vertex_array::{GLVertexArray};
-    pub use super::objects::vertex_array::func::{unbind};
 }

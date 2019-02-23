@@ -71,8 +71,45 @@ impl GL{
     }
     #[inline(always)] pub unsafe fn shader_source(shader: GLuint, count: GLsizei, string: *const *const GLchar, length: *const GLint){}
     #[inline(always)] pub unsafe fn compile_shader(shader: GLuint){}
-    #[inline(always)] pub unsafe fn get_shaderiv(shader: GLuint, param: GLuint, result: &mut GLint){}
-    #[inline(always)] pub unsafe fn get_shader_info_log(shader: GLuint, max_length: GLint, length: *mut GLsizei, buf: *mut GLchar){}
-    #[inline(always)] pub unsafe fn get_shader_source(shader: GLuint, max_length: GLint, length: *mut GLsizei, buf: *mut GLchar){}
+    #[inline(always)] pub unsafe fn get_shaderiv(shader: GLuint, param: GLuint, result: &mut GLint){
+        *result = match param{
+            gl::SHADER_TYPE => gl::VERTEX_SHADER as i32,
+            gl::DELETE_STATUS => 1,
+            gl::COMPILE_STATUS => 1,
+            gl::INFO_LOG_LENGTH => 8,
+            SHADER_SOURCE_LENGTH => 7,
+            _ => panic!("unknown status code")
+        };
+    }
+    #[inline(always)] pub unsafe fn get_shader_info_log(shader: GLuint, max_length: GLint, length: *mut GLsizei, buf: *mut GLchar){
+        let mut result = 0;
+        Self::get_shaderiv(shader, gl::INFO_LOG_LENGTH, &mut result);
+        if result == max_length {
+            let message = b"success";
+            for (index, character) in message.iter().enumerate(){
+                *buf.offset(index as isize) = *character as i8;
+            }
+        } else {
+            let message = b"failure";
+            for (index, character) in message.iter().enumerate(){
+                *buf.offset(index as isize) = *character as i8;
+            }
+        }
+    }
+    #[inline(always)] pub unsafe fn get_shader_source(shader: GLuint, max_length: GLint, length: *mut GLsizei, buf: *mut GLchar){
+        let mut result = 0;
+        Self::get_shaderiv(shader, gl::SHADER_SOURCE_LENGTH, &mut result);
+        if result == max_length {
+            let message = b"source";
+            for (index, character) in message.iter().enumerate(){
+                *buf.offset(index as isize) = *character as i8;
+            }
+        } else {
+            let message = b"error!";
+            for (index, character) in message.iter().enumerate(){
+                *buf.offset(index as isize) = *character as i8;
+            }
+        }
+    }
     #[inline(always)] pub unsafe fn delete_shader(name: GLuint){}
 }

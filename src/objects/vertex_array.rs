@@ -1,14 +1,6 @@
 use super::super::error::{GLError, GLErrorKind};
 use gl::types::*;
 
-pub mod func{
-    pub fn unbind() {
-        unsafe {
-            gl::BindVertexArray(0);
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct GLVertexArray{
     name: GLuint,
@@ -30,6 +22,12 @@ impl GLVertexArray{
     pub fn bind(&self) {
         unsafe {
             gl::BindVertexArray(self.name);
+        }
+    }
+
+    pub fn unbind(&self){
+        unsafe {
+            gl::BindVertexArray(0);
         }
     }
 }

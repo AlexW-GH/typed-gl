@@ -5,26 +5,6 @@ use std::marker::PhantomData;
 use std::mem;
 use std::os::raw;
 
-pub mod func{
-    use super::*;
-
-    pub fn unbind(target: BufferTarget) {
-        unsafe {
-            gl::BindBuffer(target.value(), 0);
-        }
-    }
-
-    pub unsafe fn buffer_data<T>(target: BufferTarget, usage: BufferUsage, data: &[T], _: &GLMutableBuffer<T>){
-        let data_ptr = &data[0] as *const _ as *const raw::c_void;
-        gl::BufferData(
-            target.value(),
-            mem::size_of_val(data) as GLsizeiptr,
-            data_ptr,
-            usage.value(),
-        );
-    }
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BufferTarget{
     UnboundBuffer,
@@ -83,6 +63,7 @@ impl BufferUsage{
 
 pub trait GLBuffer{
     fn bind(&self, target: BufferTarget);
+    fn unbind(&self, target: BufferTarget);
 }
 
 #[derive(Debug)]
@@ -97,12 +78,28 @@ impl <T> GLMutableBuffer<T>{
 
         Ok(GLMutableBuffer{name, phantom_data: PhantomData})
     }
+
+    pub unsafe fn buffer_data(&self, target: BufferTarget, usage: BufferUsage, data: &[T]){
+        let data_ptr = &data[0] as *const _ as *const raw::c_void;
+        gl::BufferData(
+            target.value(),
+            mem::size_of_val(data) as GLsizeiptr,
+            data_ptr,
+            usage.value(),
+        );
+    }
 }
 
 impl <T> GLBuffer for GLMutableBuffer<T>{
     fn bind(&self, target: BufferTarget) {
         unsafe {
             gl::BindBuffer(target.value(), self.name);
+        }
+    }
+
+    fn unbind(&self, target: BufferTarget) {
+        unsafe {
+            gl::BindBuffer(target.value(), 0);
         }
     }
 }

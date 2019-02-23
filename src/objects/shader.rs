@@ -171,3 +171,76 @@ impl Drop for GLShader {
         unsafe { GL::delete_shader(self.name) }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use speculate::speculate;
+
+    use crate::objects::shader::{GLShader, ShaderType, GetShaderIvParam, GetShaderIvResult};
+    use crate::error::GLErrorKind;
+
+    speculate! {
+        before {
+                let mut vs = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+            }
+
+        describe "creation" {
+
+            it "can set the shader source" {
+                let source = b"void main {}";
+
+                vs.shader_source(source).expect("Could not set shader source");
+            }
+
+            it "can not set shader source with internal null" {
+                let source = b"void main {\0}";
+
+                let error = vs.shader_source(source).expect_err("Expected error while setting shader source");
+                assert_eq!(error.kind(), GLErrorKind::ShaderSourceInternalNull);
+            }
+        }
+
+        describe "shaderiv" {
+
+            it "can check shader type" {
+                let result = vs.get_shader_iv(GetShaderIvParam::ShaderType).unwrap();
+
+                if let GetShaderIvResult::ShaderResult(shader_type) = result {
+                    assert_eq!(shader_type, ShaderType::VertexShader);
+                } else {
+                    panic!("Wrong result type");
+                }
+            }
+
+            it "can check delete status" {
+                let result = vs.get_shader_iv(GetShaderIvParam::DeleteStatus).unwrap();
+
+                if let GetShaderIvResult::BooleanResult(status) = result {
+                    assert_eq!(status, true);
+                } else {
+                    panic!("Wrong result type");
+                }
+            }
+
+            it "can check compile status" {
+                let result = vs.get_shader_iv(GetShaderIvParam::CompileStatus).unwrap();
+
+                if let GetShaderIvResult::BooleanResult(status) = result {
+                    assert_eq!(status, true);
+                } else {
+                    panic!("Wrong result type");
+                }
+            }
+
+            it "can retrieve the info log" {
+                let infoLog = vs.get_info_log();
+                assert_eq!(std::str::from_utf8(&infoLog).unwrap(), "success");
+            }
+
+            it "can retrieve the shader source" {
+                let infoLog = vs.get_shader_source();
+                assert_eq!(std::str::from_utf8(&infoLog).unwrap(), "source");
+            }
+         }
+    }
+}
