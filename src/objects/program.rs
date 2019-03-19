@@ -1,8 +1,6 @@
 use crate::error::GLError;
 use crate::error::GLErrorKind;
-use crate::gl_wrapper::GL;
-use crate::objects::shader::GLShader;
-use crate::objects::shader::ShaderType;
+use crate::objects::shader::{ShaderType, GLShader};
 use gl::types::*;
 use std::ptr;
 use std::ffi::CString;
@@ -65,7 +63,7 @@ impl GLProgram {
     pub fn new() -> Result<Self, GLError> {
         let name;
         unsafe {
-            name = GL::create_program();
+            name = gl::CreateProgram();
         }
         if name == 0 {
             return Err(GLErrorKind::ProgramCreation)?;
@@ -94,7 +92,7 @@ impl GLProgram {
             Err(GLErrorKind::TypeAlreadyPresent)?
         } else {
             unsafe {
-                GL::attach_shader(self.name, shader.name());
+                gl::AttachShader(self.name, shader.name());
             }
             self.shaders.push(ShaderNameTypePair {
                 shader_name: shader.name(),
@@ -112,7 +110,7 @@ impl GLProgram {
         {
             Some(index) => {
                 unsafe {
-                    GL::detach_shader(self.name, shader.name());
+                    gl::DetachShader(self.name, shader.name());
                 }
                 self.shaders.remove(index);
             }
@@ -122,16 +120,16 @@ impl GLProgram {
     }
 
     pub fn link_program(&self) {
-        unsafe { GL::link_program(self.name) }
+        unsafe { gl::LinkProgram(self.name) }
     }
 
     pub fn validate_program(&self) {
-        unsafe { GL::validate_program(self.name) }
+        unsafe { gl::ValidateProgram(self.name) }
     }
 
     pub fn use_program(&self) {
         unsafe {
-            GL::use_program(self.name);
+            gl::UseProgram(self.name);
         }
     }
 
@@ -139,7 +137,7 @@ impl GLProgram {
         use self::GetProgramIvParam::*;
         let mut result = i32::from(gl::FALSE);
         unsafe {
-            GL::get_programiv(self.name, param.value(), &mut result);
+            gl::GetProgramiv(self.name, param.value(), &mut result);
         }
         match param {
             DeleteStatus => GetProgramIvResult::BooleanResult(result as u8 == gl::TRUE),
@@ -156,17 +154,19 @@ impl GLProgram {
     pub fn get_info_log(&self) -> Vec<u8> {
         let mut len = 0;
         unsafe {
-            GL::get_programiv(self.name, gl::INFO_LOG_LENGTH, &mut len);
+            gl::GetProgramiv(self.name, gl::INFO_LOG_LENGTH, &mut len);
         }
         let mut buf = Vec::with_capacity(len as usize);
-        unsafe {
-            buf.set_len((len as usize) - 1);
-            GL::get_program_info_log(
-                self.name,
-                len,
-                ptr::null_mut(),
-                buf.as_mut_ptr() as *mut GLchar,
-            );
+        if len > 0 {
+            unsafe {
+                buf.set_len((len as usize) - 1);
+                gl::GetProgramInfoLog(
+                    self.name,
+                    len,
+                    ptr::null_mut(),
+                    buf.as_mut_ptr() as *mut GLchar,
+                );
+            }
         }
         buf
     }
@@ -178,7 +178,7 @@ impl GLProgram {
         }
         let location: i32;
         unsafe {
-            location = GL::get_uniform_location(self.name, CString::new(uniform_name.as_bytes()).context(GLErrorKind::InvalidUniformName)?.as_ptr());
+            location = gl::GetUniformLocation(self.name, CString::new(uniform_name.as_bytes()).context(GLErrorKind::InvalidUniformName)?.as_ptr());
         }
         if location == -1 {
             return Err(GLErrorKind::UniformNotPresent)?;
@@ -193,7 +193,7 @@ impl GLProgram {
 
 impl Drop for GLProgram {
     fn drop(&mut self) {
-        unsafe { GL::delete_program(self.name) }
+        unsafe { gl::DeleteProgram(self.name) }
     }
 }
 
@@ -207,6 +207,27 @@ mod tests {
     use crate::objects::shader::ShaderType;
 
     speculate! {
+        before {
+                use glutin::{EventsLoop, WindowBuilder, ContextBuilder, WindowedContext};
+                use glutin::dpi::PhysicalSize;
+                use glutin::ContextTrait;
+
+                let events_loop = EventsLoop::new();
+                let context = ContextBuilder::new()
+                    .with_vsync(false)
+                    .build_headless(&events_loop, PhysicalSize{width: 800f64, height: 600f64})
+                    .unwrap();
+                unsafe{
+                    context.make_current().unwrap();
+                    gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
+                }
+            }
+
+        it "can create a program" {
+            let mut program = GLProgram::new().expect("Could not create GLProgram");
+            assert_ne!(program.name(), 0);
+        }
+
         describe "shaders" {
 
             before {
@@ -353,13 +374,38 @@ mod tests {
                 let result = program.get_program_iv(GetProgramIvParam::DeleteStatus);
 
                 if let GetProgramIvResult::BooleanResult(status) = result {
-                    assert_eq!(status, true);
+                    assert_eq!(status, false);
                 } else {
                     panic!("Wrong result type");
                 }
             }
 
-            it "can check link status" {
+            it "can check link status not linked" {
+                let result = program.get_program_iv(GetProgramIvParam::LinkStatus);
+
+                if let GetProgramIvResult::BooleanResult(status) = result {
+                    assert_eq!(status, false);
+                } else {
+                    panic!("Wrong result type");
+                }
+            }
+
+            it "can check link status linked" {
+                let shader = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+                let shader_source = b"
+                    #version 330
+
+                    out vec3 fragPos;
+
+                    uniform int someValue;
+
+                    void main(){
+                        fragPos = (vec4(someValue, someValue, someValue, 1.0)).xyz;
+                    }";
+                shader.shader_source(shader_source);
+                shader.compile_shader();
+                program.attach_shader(&shader).expect("Could not attach shader");
+                program.link_program();
                 let result = program.get_program_iv(GetProgramIvParam::LinkStatus);
 
                 if let GetProgramIvResult::BooleanResult(status) = result {
@@ -369,7 +415,60 @@ mod tests {
                 }
             }
 
-            it "can check validate status" {
+            it "can check link status linked error in shader" {
+                let shader = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+                let shader_source = b"
+                    #version 330
+
+                    out vec3 fragPos;
+
+                    uniform intxxx someValue;
+
+                    void main(){
+                        fragPos = (vec4(someValue, someValue, someValue, 1.0)).xyz;
+                    }";
+                shader.shader_source(shader_source);
+                shader.compile_shader();
+                program.attach_shader(&shader).expect("Could not attach shader");
+                program.link_program();
+                let result = program.get_program_iv(GetProgramIvParam::LinkStatus);
+
+                if let GetProgramIvResult::BooleanResult(status) = result {
+                    assert_eq!(status, false);
+                } else {
+                    panic!("Wrong result type");
+                }
+            }
+
+            it "can check validate status not initialized" {
+                let shader = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+                program.validate_program();
+                let result = program.get_program_iv(GetProgramIvParam::ValidateStatus);
+
+                if let GetProgramIvResult::BooleanResult(status) = result {
+                    assert_eq!(status, false);
+                } else {
+                    panic!("Wrong result type");
+                }
+            }
+
+            it "can check validate status successfully" {
+                let shader = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+                let shader_source = b"
+                    #version 330
+
+                    out vec3 fragPos;
+
+                    uniform int someValue;
+
+                    void main(){
+                        fragPos = (vec4(someValue, someValue, someValue, 1.0)).xyz;
+                    }";
+                shader.shader_source(shader_source);
+                shader.compile_shader();
+                program.attach_shader(&shader).expect("Could not attach shader");
+                program.link_program();
+                program.validate_program();
                 let result = program.get_program_iv(GetProgramIvParam::ValidateStatus);
 
                 if let GetProgramIvResult::BooleanResult(status) = result {
@@ -379,59 +478,164 @@ mod tests {
                 }
             }
 
+            it "can check validate status error in shader" {
+                let shader = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+                let shader_source = b"
+                    #version 330
+
+                    out vec3 fragPos;
+
+                    uniform intxxx someValue;
+
+                    void main(){
+                        fragPos = (vec4(someValue, someValue, someValue, 1.0)).xyz;
+                    }";
+                shader.shader_source(shader_source);
+                shader.compile_shader();
+                program.attach_shader(&shader).expect("Could not attach shader");
+                program.link_program();
+                program.validate_program();
+                let result = program.get_program_iv(GetProgramIvParam::ValidateStatus);
+
+                if let GetProgramIvResult::BooleanResult(status) = result {
+                    assert_eq!(status, false);
+                } else {
+                    panic!("Wrong result type");
+                }
+            }
+
             it "can check attached shaders" {
+            let shader = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+                let shader_source = b"
+                    #version 330
+
+                    out vec3 fragPos;
+
+                    uniform intxxx someValue;
+
+                    void main(){
+                        fragPos = (vec4(someValue, someValue, someValue, 1.0)).xyz;
+                    }";
+                shader.shader_source(shader_source);
+                shader.compile_shader();
+                program.attach_shader(&shader).expect("Could not attach shader");
+                program.link_program();
+                program.validate_program();
+
                 let result = program.get_program_iv(GetProgramIvParam::AttachedShaders);
 
                 if let GetProgramIvResult::IntegerResult(status) = result {
-                    assert_eq!(status, 42);
+                    assert_eq!(status, 1);
                 } else {
                     panic!("Wrong result type");
                 }
             }
 
-            it "can check active attributes" {
-                let result = program.get_program_iv(GetProgramIvParam::ActiveAttributes);
+            it "can check attached shaders with no attached shaders" {
+                let result = program.get_program_iv(GetProgramIvParam::AttachedShaders);
 
                 if let GetProgramIvResult::IntegerResult(status) = result {
-                    assert_eq!(status, 43);
-                } else {
-                    panic!("Wrong result type");
-                }
-            }
-
-            it "can check active attribute max length" {
-                let result = program.get_program_iv(GetProgramIvParam::ActiveAttributeMaxLength);
-
-                if let GetProgramIvResult::IntegerResult(status) = result {
-                    assert_eq!(status, 44);
+                    assert_eq!(status, 0);
                 } else {
                     panic!("Wrong result type");
                 }
             }
 
             it "can check active uniforms" {
+                let shader = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+                let shader_source = b"
+                    #version 330
+
+                    out vec3 fragPos;
+
+                    uniform int someValue;
+
+                    void main(){
+                        fragPos = (vec4(someValue, someValue, someValue, 1.0)).xyz;
+                    }";
+                shader.shader_source(shader_source);
+                shader.compile_shader();
+                program.attach_shader(&shader).expect("Could not attach shader");
+                program.link_program();
+                let uniform_location = program.get_uniform_location::<i32>("someValue").expect("could not retrieve uniform location");
+
                 let result = program.get_program_iv(GetProgramIvParam::ActiveUniforms);
 
                 if let GetProgramIvResult::IntegerResult(status) = result {
-                    assert_eq!(status, 45);
+                    assert_eq!(status, 1);
                 } else {
                     panic!("Wrong result type");
                 }
             }
 
             it "can check active uniform max length" {
+                let shader = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+                let shader_source = b"
+                    #version 330
+
+                    out vec3 fragPos;
+
+                    uniform int someValue;
+
+                    void main(){
+                        fragPos = (vec4(someValue, someValue, someValue, 1.0)).xyz;
+                    }";
+                shader.shader_source(shader_source);
+                shader.compile_shader();
+                program.attach_shader(&shader).expect("Could not attach shader");
+                program.link_program();
+
                 let result = program.get_program_iv(GetProgramIvParam::ActiveUniformMaxLength);
 
                 if let GetProgramIvResult::IntegerResult(status) = result {
-                    assert_eq!(status, 46);
+                    assert_eq!(status, 10);
                 } else {
                     panic!("Wrong result type");
                 }
             }
 
-            it "can retrieve the info log" {
+            it "can retrieve the info log with link error" {
+                let shader = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+                let shader_source = b"
+                    #version 330
+
+                    out vec3 fragPos;
+
+                    uniform intx someValue;
+
+                    void main(){
+                        fragPos = (vec4(someValue, someValue, someValue, 1.0)).xyz;
+                    }";
+                shader.shader_source(shader_source);
+                shader.compile_shader();
+                program.attach_shader(&shader).expect("Could not attach shader");
+                program.link_program();
+
                 let infoLog = program.get_info_log();
-                assert_eq!(std::str::from_utf8(&infoLog).unwrap(), "success");
+                assert_eq!(std::str::from_utf8(&infoLog).unwrap(), "Vertex info\n-----------\n0(6) : \
+                error C0000: syntax error, unexpected identifier, expecting \
+                \'{\' at token \"someValue\"\n(0) : error C2003: incompatible options for link\n");
+            }
+
+            it "can retrieve the info log with no error" {
+                let shader = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+                let shader_source = b"
+                    #version 330
+
+                    out vec3 fragPos;
+
+                    uniform int someValue;
+
+                    void main(){
+                        fragPos = (vec4(someValue, someValue, someValue, 1.0)).xyz;
+                    }";
+                shader.shader_source(shader_source);
+                shader.compile_shader();
+                program.attach_shader(&shader).expect("Could not attach shader");
+                program.link_program();
+
+                let infoLog = program.get_info_log();
+                assert_eq!(std::str::from_utf8(&infoLog).unwrap(), "");
             }
          }
 
@@ -439,10 +643,31 @@ mod tests {
 
             before {
                 let mut program = GLProgram::new().expect("Could not create GLProgram");
+                let shader = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+                let shader_source = b"
+                    #version 330
+
+                    out vec3 fragPos;
+
+                    uniform int someValue;
+
+                    void main(){
+                        fragPos = (vec4(someValue, someValue, someValue, 1.0)).xyz;
+                    }";
+                shader.shader_source(shader_source);
+                shader.compile_shader();
+                program.attach_shader(&shader).expect("Could not attach shader");
+                program.link_program();
+            }
+
+            it "can retrieve shader source" {
+                let result = shader.get_shader_source();
+                assert_eq!(result, shader_source.to_vec())
             }
 
             it "can retrieve a uniform location" {
-                let uniform_location = program.get_uniform_location::<f32>("uniform").expect("could not retrieve uniform location");
+
+                let uniform_location = program.get_uniform_location::<i32>("someValue").expect("could not retrieve uniform location");
 
                 use crate::objects::uniform::Uniform;
 

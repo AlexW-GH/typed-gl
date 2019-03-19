@@ -1,6 +1,5 @@
 extern crate typedgl_derive;
 
-mod gl_wrapper;
 mod objects;
 mod functions;
 

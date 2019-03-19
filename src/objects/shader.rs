@@ -1,6 +1,5 @@
 use crate::error::GLError;
 use crate::error::GLErrorKind;
-use crate::gl_wrapper::GL;
 use crate::objects::shader::ShaderType::ComputeShader;
 use crate::objects::shader::ShaderType::FragmentShader;
 use crate::objects::shader::ShaderType::GeometryShader;
@@ -83,7 +82,7 @@ impl GLShader {
     pub fn new(shader_type: ShaderType) -> Result<Self, GLError> {
         let name;
         unsafe {
-            name = GL::create_shader(shader_type.value());
+            name = gl::CreateShader(shader_type.value());
         }
         if name == 0 {
             return Err(GLErrorKind::ShaderCreation)?;
@@ -103,21 +102,21 @@ impl GLShader {
         let c_str = CString::new(shader_src).context(GLErrorKind::ShaderSourceInternalNull)?;
         let length = vec![shader_src.len() as GLint];
         unsafe {
-            GL::shader_source(self.name, 1, &c_str.as_ptr(), length.as_ptr());
+            gl::ShaderSource(self.name, 1, &c_str.as_ptr(), length.as_ptr());
         }
         Ok(())
     }
 
     pub fn compile_shader(&self) {
         unsafe {
-            GL::compile_shader(self.name);
+            gl::CompileShader(self.name);
         }
     }
 
     pub fn get_shader_iv(&self, param: GetShaderIvParam) -> Result<GetShaderIvResult, GLError> {
         let mut result = i32::from(gl::FALSE);
         unsafe {
-            GL::get_shaderiv(self.name, param.value(), &mut result);
+            gl::GetShaderiv(self.name, param.value(), &mut result);
         }
         match param {
             GetShaderIvParam::ShaderType => {
@@ -135,17 +134,19 @@ impl GLShader {
     pub fn get_info_log(&self) -> Vec<u8> {
         let mut len = 0;
         unsafe {
-            GL::get_shaderiv(self.name, gl::INFO_LOG_LENGTH, &mut len);
+            gl::GetShaderiv(self.name, gl::INFO_LOG_LENGTH, &mut len);
         }
         let mut buf = Vec::with_capacity(len as usize);
-        unsafe {
-            buf.set_len((len as usize) - 1);
-            GL::get_shader_info_log(
-                self.name,
-                len,
-                ptr::null_mut(),
-                buf.as_mut_ptr() as *mut GLchar,
-            );
+        if len > 0 {
+            unsafe {
+                buf.set_len((len as usize) - 1);
+                gl::GetShaderInfoLog(
+                    self.name,
+                    len,
+                    ptr::null_mut(),
+                    buf.as_mut_ptr() as *mut GLchar,
+                );
+            }
         }
         buf
     }
@@ -153,17 +154,19 @@ impl GLShader {
     pub fn get_shader_source(&self) -> Vec<u8> {
         let mut len = 0;
         unsafe {
-            GL::get_shaderiv(self.name, gl::SHADER_SOURCE_LENGTH, &mut len);
+            gl::GetShaderiv(self.name, gl::SHADER_SOURCE_LENGTH, &mut len);
         }
         let mut buf = Vec::with_capacity(len as usize);
-        unsafe {
-            buf.set_len((len as usize) - 1);
-            GL::get_shader_source(
-                self.name,
-                len,
-                ptr::null_mut(),
-                buf.as_mut_ptr() as *mut GLchar,
-            );
+        if len > 0 {
+            unsafe {
+                buf.set_len((len as usize) - 1);
+                gl::GetShaderSource(
+                    self.name,
+                    len,
+                    ptr::null_mut(),
+                    buf.as_mut_ptr() as *mut GLchar,
+                );
+            }
         }
         buf
     }
@@ -171,7 +174,7 @@ impl GLShader {
 
 impl Drop for GLShader {
     fn drop(&mut self) {
-        unsafe { GL::delete_shader(self.name) }
+        unsafe { gl::DeleteShader(self.name) }
     }
 }
 
@@ -181,10 +184,36 @@ mod tests {
 
     use crate::error::GLErrorKind;
     use crate::objects::shader::{GLShader, GetShaderIvParam, GetShaderIvResult, ShaderType};
+    use crate::objects::program::GLProgram;
 
     speculate! {
         before {
-                let mut vs = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+                use glutin::{EventsLoop, WindowBuilder, ContextBuilder, WindowedContext};
+                use glutin::dpi::PhysicalSize;
+                use glutin::ContextTrait;
+
+                let events_loop = EventsLoop::new();
+                let context = ContextBuilder::new()
+                    .with_vsync(false)
+                    .build_headless(&events_loop, PhysicalSize{width: 800f64, height: 600f64})
+                    .unwrap();
+                unsafe{
+                    context.make_current().unwrap();
+                    gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
+                }
+
+                let mut program = GLProgram::new().expect("Could not create GLProgram");
+                let vs = GLShader::new(ShaderType::VertexShader).expect("Could not create GLShader");
+                let shader_source = b"
+                    #version 330
+
+                    out vec3 fragPos;
+
+                    uniform float value;
+
+                    void main(){
+                        fragPos = (vec4(value, value, value, 1.0)).xyz;
+                    }";
             }
 
         describe "creation" {
@@ -205,6 +234,7 @@ mod tests {
 
         describe "shaderiv" {
 
+
             it "can check shader type" {
                 let result = vs.get_shader_iv(GetShaderIvParam::ShaderType).unwrap();
 
@@ -219,13 +249,15 @@ mod tests {
                 let result = vs.get_shader_iv(GetShaderIvParam::DeleteStatus).unwrap();
 
                 if let GetShaderIvResult::BooleanResult(status) = result {
-                    assert_eq!(status, true);
+                    assert_eq!(status, false);
                 } else {
                     panic!("Wrong result type");
                 }
             }
 
-            it "can check compile status" {
+            it "can check compile status for a compiled shader" {
+                vs.shader_source(shader_source);
+                vs.compile_shader();
                 let result = vs.get_shader_iv(GetShaderIvParam::CompileStatus).unwrap();
 
                 if let GetShaderIvResult::BooleanResult(status) = result {
@@ -235,14 +267,29 @@ mod tests {
                 }
             }
 
-            it "can retrieve the info log" {
-                let infoLog = vs.get_info_log();
-                assert_eq!(std::str::from_utf8(&infoLog).unwrap(), "success");
+            it "can check compile status for an uncompiled shader" {
+                vs.shader_source(shader_source);
+                let result = vs.get_shader_iv(GetShaderIvParam::CompileStatus).unwrap();
+
+                if let GetShaderIvResult::BooleanResult(status) = result {
+                    assert_eq!(status, false);
+                } else {
+                    panic!("Wrong result type");
+                }
             }
 
-            it "can retrieve the shader source" {
-                let infoLog = vs.get_shader_source();
-                assert_eq!(std::str::from_utf8(&infoLog).unwrap(), "source");
+            it "can retrieve the info log" {
+                vs.shader_source(b"void main {}");
+                vs.compile_shader();
+
+                let infoLog = vs.get_info_log();
+                assert_eq!(std::str::from_utf8(&infoLog).unwrap(), "0(1) : error C1014: \"main\" is not a function\n");
+            }
+
+            it "can retrieve shader source" {
+                vs.shader_source(shader_source);
+                let result = vs.get_shader_source();
+                assert_eq!(result, shader_source.to_vec())
             }
          }
     }

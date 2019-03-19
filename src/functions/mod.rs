@@ -1,17 +1,16 @@
 use gl::types::*;
-pub use crate::gl_wrapper::GL;
 
 pub mod capabilties;
 
 pub fn clear_color(red :f32, green: f32, blue: f32, alpha: f32){
     unsafe{
-        GL::clear_color(red, green, blue, alpha);
+        gl::ClearColor(red, green, blue, alpha);
     }
 }
 
 pub fn viewport(x: i32, y: i32, width: u16, height: u16){
         unsafe {
-            GL::viewport(x, y, i32::from(width), i32::from(height))
+            gl::Viewport(x, y, i32::from(width), i32::from(height))
         }
 }
 

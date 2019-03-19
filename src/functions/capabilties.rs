@@ -1,20 +1,19 @@
-pub use crate::gl_wrapper::GL;
 
 pub fn enable(capability: Capability){
     unsafe{
-        GL::enable(capability.value());
+        gl::Enable(capability.value());
     }
 }
 
 pub fn disable(capability: Capability){
     unsafe{
-        GL::disable(capability.value());
+        gl::Disable(capability.value());
     }
 }
 
 pub fn is_enabled(capability: Capability) -> bool{
     unsafe{
-        let result = GL::is_enabled(capability.value());
+        let result = gl::IsEnabled(capability.value());
         result == gl::TRUE
     }
 }
