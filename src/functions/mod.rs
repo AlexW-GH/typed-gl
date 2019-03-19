@@ -2,6 +2,46 @@ use gl::types::*;
 
 pub mod capabilties;
 
+pub struct BufferTypesBuilder{
+    buffer_type: u32,
+}
+
+pub struct BufferTypes{
+    value: u32
+}
+
+impl BufferTypesBuilder{
+
+    pub fn new() -> Self{
+        BufferTypesBuilder{buffer_type: 0}
+    }
+
+    pub fn with_color_buffer(mut self) -> Self{
+        self.buffer_type |= gl::COLOR_BUFFER_BIT;
+        self
+    }
+
+    pub fn with_depth_buffer(mut self) -> Self{
+        self.buffer_type |= gl::DEPTH_BUFFER_BIT;
+        self
+    }
+
+    pub fn with_stencil_buffer(mut self) -> Self{
+        self.buffer_type |= gl::STENCIL_BUFFER_BIT;
+        self
+    }
+
+    pub fn build(self) -> BufferTypes {
+        BufferTypes {value: self.buffer_type}
+    }
+}
+
+pub fn clear(buffer_type: BufferTypes){
+    unsafe{
+        gl::Clear(buffer_type.value);
+    }
+}
+
 pub fn clear_color(red :f32, green: f32, blue: f32, alpha: f32){
     unsafe{
         gl::ClearColor(red, green, blue, alpha);
