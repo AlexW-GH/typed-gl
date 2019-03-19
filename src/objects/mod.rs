@@ -9,3 +9,4 @@ pub mod shader;
 pub mod texture;
 pub mod transform_feedback;
 pub mod vertex_array;
+pub mod uniform;

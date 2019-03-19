@@ -39,6 +39,28 @@ pub enum GLErrorKind {
 
     #[fail(display = "Too Many Buffers have been requested")]
     TooManyBuffers,
+
+    #[fail(display = "Could not get capabilites")]
+    GetCapability,
+
+    #[fail(display = "Supplied index is greater than or equal to GL_MAX_VERTEX_ATTRIBS.")]
+    TooManyVertexAttribs,
+
+    #[fail(display = "Array size of fields may only be 1, 2, 3 or 4")]
+    WrongArraySize,
+
+    #[fail(display = "Vertex array may not be empty")]
+    VertexArrayEmpty,
+
+    #[fail(display = "Name not an active uniform value, is associated with an atomic counter or is a named uniform block")]
+    UniformNotPresent,
+
+    #[fail(display = "Uniform is not allowed to start with the prefix 'gl_'")]
+    ReservedUniformPrefix,
+
+    #[fail(display = "Uniform name needs to be null terminated")]
+    InvalidUniformName
+
 }
 
 impl Fail for GLError {

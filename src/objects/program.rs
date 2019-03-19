@@ -5,6 +5,8 @@ use crate::objects::shader::GLShader;
 use crate::objects::shader::ShaderType;
 use gl::types::*;
 use std::ptr;
+use std::ffi::CString;
+use std::marker::PhantomData;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GetProgramIvParam {
@@ -40,16 +42,23 @@ pub enum GetProgramIvResult {
     IntegerResult(i32),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub struct GLProgram {
     name: GLuint,
     shaders: Vec<ShaderNameTypePair>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 struct ShaderNameTypePair {
     shader_name: GLuint,
     shader_type: ShaderType,
+}
+
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+pub struct GLUniformLocation<T>{
+    pub(crate) program: GLuint,
+    pub(crate) location: GLint,
+    pd: PhantomData<T>,
 }
 
 impl GLProgram {
@@ -160,6 +169,21 @@ impl GLProgram {
             );
         }
         buf
+    }
+
+    pub fn get_uniform_location<T>(&self, uniform_name: &str) -> Result<GLUniformLocation<T>, GLError> {
+        use failure::ResultExt;
+        if uniform_name.starts_with("gl_"){
+            return Err(GLErrorKind::ReservedUniformPrefix)?;
+        }
+        let location: i32;
+        unsafe {
+            location = GL::get_uniform_location(self.name, CString::new(uniform_name.as_bytes()).context(GLErrorKind::InvalidUniformName)?.as_ptr());
+        }
+        if location == -1 {
+            return Err(GLErrorKind::UniformNotPresent)?;
+        }
+        Ok(GLUniformLocation::<T>{program: self.name(), location, pd: PhantomData })
     }
 
     pub fn name(&self) -> u32 {
@@ -408,6 +432,33 @@ mod tests {
             it "can retrieve the info log" {
                 let infoLog = program.get_info_log();
                 assert_eq!(std::str::from_utf8(&infoLog).unwrap(), "success");
+            }
+         }
+
+         describe "uniform" {
+
+            before {
+                let mut program = GLProgram::new().expect("Could not create GLProgram");
+            }
+
+            it "can retrieve a uniform location" {
+                let uniform_location = program.get_uniform_location::<f32>("uniform").expect("could not retrieve uniform location");
+
+                use crate::objects::uniform::Uniform;
+
+                assert!(uniform_location.location >= 0);
+            }
+
+            it "returns error on gl_ - prefixed name" {
+                let error = program.get_uniform_location::<f32>("gl_uniform").expect_err("Expected failure to get uniform location");
+
+                assert_eq!(error.kind(), GLErrorKind::ReservedUniformPrefix);
+            }
+
+            it "returns error when uniform not found" {
+                let error = program.get_uniform_location::<f32>("invalid").expect_err("Expected failure to get uniform location");
+
+                assert_eq!(error.kind(), GLErrorKind::UniformNotPresent);
             }
          }
     }

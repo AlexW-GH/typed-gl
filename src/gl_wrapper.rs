@@ -4,6 +4,26 @@ pub struct GL {}
 #[cfg(not(test))]
 impl GL {
     #[inline(always)]
+    pub unsafe fn enable(cap: GLenum) {
+        gl::Enable(cap)
+    }
+    #[inline(always)]
+    pub unsafe fn disable(cap: GLenum) {
+        gl::Disable(cap)
+    }
+    #[inline(always)]
+    pub unsafe fn is_enabled(cap: GLenum) -> GLboolean {
+        gl::IsEnabled(cap)
+    }
+    #[inline(always)]
+    pub unsafe fn clear_color(red: GLclampf, green: GLclampf, blue: GLclampf, alpha: GLclampf){
+        gl::ClearColor(red, green, blue, alpha)
+    }
+    #[inline(always)]
+    pub unsafe fn viewport(x: GLint, y: GLint, width: GLsizei, height: GLsizei){
+        gl::Viewport(x, y, width, height)
+    }
+    #[inline(always)]
     pub unsafe fn create_program() -> GLuint {
         gl::CreateProgram()
     }
@@ -87,18 +107,34 @@ impl GL {
     pub unsafe fn delete_shader(name: GLuint) {
         gl::DeleteShader(name)
     }
+    #[inline(always)]
+    pub unsafe fn get_uniform_location(program: GLuint, name: *const GLchar) -> i32 {
+        gl::GetUniformLocation(program, name)
+    }
 }
 
 #[cfg(test)]
 use std::sync::atomic::AtomicIsize;
 #[cfg(test)]
 use std::sync::atomic::Ordering;
+#[cfg(test)]
+use std::ffi::CStr;
 
 #[cfg(test)]
 static mut COUNTER: AtomicIsize = AtomicIsize::new(1);
 
 #[cfg(test)]
 impl GL {
+    #[inline(always)]
+    pub unsafe fn enable(cap: GLenum) {}
+    #[inline(always)]
+    pub unsafe fn disable(cap: GLenum) {}
+    #[inline(always)]
+    pub unsafe fn is_enabled(cap: GLenum) -> GLboolean {true as u8}
+    #[inline(always)]
+    pub unsafe fn clear_color(red: GLclampf, green: GLclampf, blue: GLclampf, alpha: GLclampf) {}
+    #[inline(always)]
+    pub unsafe fn viewport(x: GLint, y: GLint, width: GLsizei, height: GLsizei){}
     #[inline(always)]
     pub unsafe fn create_program() -> GLuint {
         COUNTER.fetch_add(1, Ordering::SeqCst) as GLuint
@@ -208,10 +244,19 @@ impl GL {
     }
     #[inline(always)]
     pub unsafe fn delete_shader(name: GLuint) {}
+    #[inline(always)]
+    pub unsafe fn get_uniform_location(program: GLuint, name: *const GLchar) -> i32 {
+        let c_str: &CStr = unsafe { CStr::from_ptr(name) };
+        if c_str.to_str().expect("Could not create String") == "invalid" {
+            return -1
+        } else {
+            COUNTER.fetch_add(1, Ordering::SeqCst) as GLint
+        }
+    }
 }
 
 #[cfg(test)]
-unsafe fn write_string_to_ptr(buf: *mut _, message: &[u8]) -> () {
+unsafe fn write_string_to_ptr(buf: *mut GLchar, message: &[u8]) -> () {
     for (index, character) in message.iter().enumerate() {
         *buf.offset(index as isize) = *character as i8;
     }

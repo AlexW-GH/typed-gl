@@ -4,9 +4,17 @@ version = "0.1.0"
 authors = ["Alexander Wendt <alexwgh1+tgl@gmail.com>"]
 edition = "2018"
 
+[features]
+default = []
+nalgebralib = ["nalgebra"]
+
 [dependencies]
 gl = "0.11"
 failure = "0.1"
+
+nalgebra = { version = "0.17", optional = true}
+
+typedgl_derive = { git = "https://github.com/AlexW-GH/typed-gl-derive.git" }
 
 [dev-dependencies]
 speculate = "0.1"
