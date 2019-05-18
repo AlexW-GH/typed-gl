@@ -14,8 +14,8 @@ failure = "0.1"
 
 nalgebra = { version = "0.17", optional = true}
 
-typedgl_derive = { git = "https://github.com/AlexW-GH/typed-gl-derive.git" }
+typedgl_derive = { path = "../typedgl_derive" }
 
 [dev-dependencies]
 speculate = "0.1"
-glutin = "0.20"
+glutin = "0.21"

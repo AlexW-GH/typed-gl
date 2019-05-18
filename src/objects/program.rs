@@ -127,9 +127,13 @@ impl GLProgram {
         unsafe { gl::ValidateProgram(self.name) }
     }
 
-    pub fn use_program(&self) {
+    pub fn use_program(&self, is_used: bool) {
         unsafe {
-            gl::UseProgram(self.name);
+            if is_used{
+                gl::UseProgram(self.name);
+            } else {
+                gl::UseProgram(0);
+            }
         }
     }
 

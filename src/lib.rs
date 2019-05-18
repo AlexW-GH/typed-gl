@@ -18,4 +18,5 @@ pub mod gl_obj{
     pub use super::objects::shader::*;
     pub use super::objects::vertex_array::*;
     pub use super::objects::uniform::*;
+    pub use super::objects::texture::*;
 }

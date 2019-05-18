@@ -10,9 +10,9 @@ pub struct GLVertexArray {
 }
 
 pub trait IsVertex {
-    fn element_size(&self, index: usize) -> gl::types::GLint;
+    fn element_size(&self, index: usize) -> i32;
     fn element_type(&self, index: usize) -> VertexElementType;
-    fn element_stride(&self) -> gl::types::GLsizei;
+    fn element_stride(&self) -> i32;
     fn element_pointer(&self, index: usize) -> *const std::os::raw::c_void;
     fn field_position(&self, field_name: &str) -> usize;
 }
@@ -65,16 +65,17 @@ impl GLVertexArray {
         }
     }
 
-    pub fn bind(&self) {
-        unsafe {
-            gl::BindVertexArray(self.name);
+    pub fn bind(&self, bind: bool) {
+        if bind {
+            unsafe {
+                gl::BindVertexArray(self.name);
+            }
+        } else {
+            unsafe {
+                gl::BindVertexArray(0);
+            }
         }
-    }
 
-    pub fn unbind(&self) {
-        unsafe {
-            gl::BindVertexArray(0);
-        }
     }
 
     pub fn create_vertex_attrib_pointer(&self, vertices: &[impl IsVertex], field_name: &str, index: u32) -> Result<VertexAttribPointer, GLError>{
@@ -105,13 +106,5 @@ impl GLVertexArray {
             );
         }
         Ok(VertexAttribPointer{index})
-    }
-}
-
-impl Drop for GLVertexArray {
-    fn drop(&mut self) {
-        unsafe {
-            gl::DeleteVertexArrays(1, &self.name);
-        }
     }
 }
